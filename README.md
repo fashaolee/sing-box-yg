@@ -36,7 +36,7 @@
 
 ### VPS专用一键脚本，快捷方式：```sb```
 ```
-bash <(curl -Ls https://raw.githubusercontent.com/yonggekkk/sing-box-yg/main/sb.sh)
+bash <(curl -Ls https://raw.githubusercontent.com/fashaolee/sing-box-yg/sbg/sb.sh)
 ```
 或者
 ```
