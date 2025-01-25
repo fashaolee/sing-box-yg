@@ -1167,9 +1167,9 @@ menu() {
    echo   "---------------------------------------------------------"
    red    "2. 卸载sing-box"
    echo   "---------------------------------------------------------"
-   green  "3. 查看节点及proxyip/非标端口反代ip"
+   green  "3. 查看：各节点分享/sing-box与clash-meta订阅链接/CF节点proxyip"
    echo   "---------------------------------------------------------"
-   green  "4. 查看sing-box与clash-meta配置文件"
+   green  "4. 查看：sing-box与clash-meta配置文件"
    echo   "---------------------------------------------------------"
    yellow "5. 重置并清理所有服务进程(系统初始化)"
    echo   "---------------------------------------------------------"
@@ -1230,8 +1230,8 @@ else
 check_process="! ps aux | grep '[c]onfig' > /dev/null || ! ps aux | grep [t]oken > /dev/null"
 fi
 (crontab -l 2>/dev/null; echo "*/2 * * * * if $check_process; then /bin/bash serv00keep.sh; fi") | crontab -
-yellow "发现Cron保活可能被重置清空！现已修复成功！"
-yellow "主进程与Argo进程启动中…………2分钟后可再次进入脚本查看"
+purple "Serv00开大招了，把Cron保活重置清空了！但现已修复成功！"
+purple "主进程与Argo进程启动中…………2分钟后可再次进入脚本查看"
 else
 green "Cron保活运行正常"
 fi
