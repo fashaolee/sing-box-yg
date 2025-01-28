@@ -307,7 +307,9 @@ nb=$(hostname | cut -d '.' -f 1 | tr -d 's')
 if [ "$nb" == "14" ]; then
 ytb='"jnn-pa.googleapis.com",'
 fi
-
+hy1p=$(sed -n '1p' hy2ip.txt)
+hy2p=$(sed -n '2p' hy2ip.txt)
+hy3p=$(sed -n '3p' hy2ip.txt)
   cat > config.json << EOF
 {
   "log": {
@@ -319,7 +321,49 @@ fi
     {
        "tag": "hysteria-in",
        "type": "hysteria2",
-       "listen": "$IP",
+       "listen": "$hy1p",
+       "listen_port": $hy2_port,
+       "users": [
+         {
+             "password": "$UUID"
+         }
+     ],
+     "masquerade": "https://www.bing.com",
+     "ignore_client_bandwidth":false,
+     "tls": {
+         "enabled": true,
+         "alpn": [
+             "h3"
+         ],
+         "certificate_path": "cert.pem",
+         "key_path": "private.key"
+        }
+    },
+        {
+       "tag": "hysteria-in",
+       "type": "hysteria2",
+       "listen": "$hy2p",
+       "listen_port": $hy2_port,
+       "users": [
+         {
+             "password": "$UUID"
+         }
+     ],
+     "masquerade": "https://www.bing.com",
+     "ignore_client_bandwidth":false,
+     "tls": {
+         "enabled": true,
+         "alpn": [
+             "h3"
+         ],
+         "certificate_path": "cert.pem",
+         "key_path": "private.key"
+        }
+    },
+        {
+       "tag": "hysteria-in",
+       "type": "hysteria2",
+       "listen": "$hy3p",
        "listen_port": $hy2_port,
        "users": [
          {
@@ -1106,7 +1150,7 @@ fi
 }
 
 servkeep() {
-green "开始安装Cron进程保活"
+#green "开始安装Cron进程保活"
 curl -sSL https://raw.githubusercontent.com/yonggekkk/sing-box-yg/main/serv00keep.sh -o serv00keep.sh && chmod +x serv00keep.sh
 sed -i '' -e "14s|''|'$UUID'|" serv00keep.sh
 sed -i '' -e "17s|''|'$vless_port'|" serv00keep.sh
@@ -1118,21 +1162,21 @@ if [ ! -f "$WORKDIR/boot.log" ]; then
 sed -i '' -e "15s|''|'${ARGO_DOMAIN}'|" serv00keep.sh
 sed -i '' -e "16s|''|'${ARGO_AUTH}'|" serv00keep.sh
 fi
-if ! crontab -l 2>/dev/null | grep -q 'serv00keep'; then
-if [ -f "$WORKDIR/boot.log" ] || grep -q "trycloudflare.com" "$WORKDIR/boot.log" 2>/dev/null; then
-check_process="! ps aux | grep '[c]onfig' > /dev/null || ! ps aux | grep [l]ocalhost > /dev/null"
-else
-check_process="! ps aux | grep '[c]onfig' > /dev/null || ! ps aux | grep [t]oken > /dev/null"
-fi
-(crontab -l 2>/dev/null; echo "*/10 * * * * if $check_process; then /bin/bash serv00keep.sh; fi") | crontab -
-fi
-green "安装完毕，默认每10分钟执行一次，运行 crontab -e 可自行修改保活执行间隔" && sleep 2
-echo
+#if ! crontab -l 2>/dev/null | grep -q 'serv00keep'; then
+#if [ -f "$WORKDIR/boot.log" ] || grep -q "trycloudflare.com" "$WORKDIR/boot.log" 2>/dev/null; then
+#check_process="! ps aux | grep '[c]onfig' > /dev/null || ! ps aux | grep [l]ocalhost > /dev/null"
+#else
+#check_process="! ps aux | grep '[c]onfig' > /dev/null || ! ps aux | grep [t]oken > /dev/null"
+#fi
+#(crontab -l 2>/dev/null; echo "*/10 * * * * if $check_process; then /bin/bash serv00keep.sh; fi") | crontab -
+#fi
+#green "安装完毕，默认每10分钟执行一次，运行 crontab -e 可自行修改保活执行间隔" && sleep 2
+#echo
 green "开始安装网页进程保活"
 keep_path="$HOME/domains/${USERNAME}.${USERNAME}.serv00.net/public_nodejs"
 [ -d "$keep_path" ] || mkdir -p "$keep_path"
 curl -sL https://raw.githubusercontent.com/yonggekkk/sing-box-yg/main/app.js -o "$keep_path"/app.js
-sed -i '' "26s/name/$USERNAME/" "$keep_path"
+sed -i '' "28s/name/$USERNAME/g" "$keep_path"/app.js
 devil www del ${USERNAME}.${USERNAME}.serv00.net > /dev/null 2>&1
 devil www add ${USERNAME}.serv00.net php > /dev/null 2>&1
 devil www add ${USERNAME}.${USERNAME}.serv00.net nodejs /usr/local/bin/node18 > /dev/null 2>&1
@@ -1146,7 +1190,8 @@ cd "$keep_path"
 npm install basic-auth express dotenv axios --silent > /dev/null 2>&1
 rm $HOME/domains/${USERNAME}.${USERNAME}.serv00.net/public_nodejs/public/index.html > /dev/null 2>&1
 devil www restart ${USERNAME}.${USERNAME}.serv00.net
-green "安装完毕，打开 http://${USERNAME}.${USERNAME}.serv00.net/up 即可保活" && sleep 2
+rm -rf $HOME/domains/${USERNAME}.${USERNAME}.serv00.net/logs/*
+green "安装完毕，保活网页：http://${USERNAME}.${USERNAME}.serv00.net/up ，打开一次，即可默认每3分钟自动保活" && sleep 2
 }
 
 okip(){
@@ -1196,16 +1241,18 @@ menu() {
    echo   "============================================================"
 nb=$(echo "$HOSTNAME" | cut -d '.' -f 1 | tr -d 's')
 ym=("$HOSTNAME" "cache$nb.serv00.com" "web$nb.serv00.com")
-rm -rf $WORKDIR/ip.txt
+rm -rf $WORKDIR/ip.txt $WORKDIR/hy2ip.txt
+for ip in "${ym[@]}"; do
+dig @8.8.8.8 +time=2 +short $ip >> $WORKDIR/hy2ip.txt
+sleep 1  
+done
 for ym in "${ym[@]}"; do
-# 引用frankiejun API
 response=$(curl -sL --connect-timeout 5 --max-time 7 "https://ss.botai.us.kg/api/getip?host=$ym")
 if [[ -z "$response" || "$response" == *unknown* ]]; then
 for ip in "${ym[@]}"; do
 dig @8.8.8.8 +time=2 +short $ip >> $WORKDIR/ip.txt
 sleep 1  
 done
-break
 else
 echo "$response" | while IFS='|' read -r ip status; do
 if [[ $status == "Accessible" ]]; then
@@ -1224,37 +1271,38 @@ echo
 if [[ -e $WORKDIR/list.txt ]]; then
 green "已安装sing-box"
 ps aux | grep '[c]onfig' > /dev/null && green "主进程运行正常" || yellow "主进程启动中…………1分钟后可再次进入脚本查看"
-if [ -f "$WORKDIR/boot.log" ] && grep -q "trycloudflare.com" "$WORKDIR/boot.log" 2>/dev/null && ps aux | grep [l]ocalhost > /dev/null; then
+if [ -f "$WORKDIR/boot.log" ] && grep -q "trycloudflare.com" "$WORKDIR/boot.log" 2>/dev/null && ps aux | grep '[t]unnel --url' > /dev/null; then
 argosl=$(cat "$WORKDIR/boot.log" 2>/dev/null | grep -a trycloudflare.com | awk 'NR==2{print}' | awk -F// '{print $2}' | awk '{print $1}')
 checkhttp=$(curl -o /dev/null -s -w "%{http_code}\n" "https://$argosl")
 [ "$checkhttp" -eq 404 ] && check="域名有效" || check="域名可能无效"
 green "当前Argo临时域名：$argosl  $check"
 fi
-if [ -f "$WORKDIR/boot.log" ] && ! ps aux | grep [l]ocalhost > /dev/null; then
+if [ -f "$WORKDIR/boot.log" ] && ! ps aux | grep '[t]unnel --url' > /dev/null; then
 yellow "当前Argo临时域名暂时不存在，后台会继续生成有效的临时域名，稍后可再次进入脚本查看"
 fi
-if ps aux | grep [t]oken > /dev/null; then
+if ps aux | grep '[t]unnel --no' > /dev/null; then
 argogd=$(cat $WORKDIR/gdym.log 2>/dev/null)
 checkhttp=$(curl --max-time 2 -o /dev/null -s -w "%{http_code}\n" "https://$argogd")
 [ "$checkhttp" -eq 404 ] && check="域名有效" || check="域名可能失效"
 green "当前Argo固定域名：$argogd $check"
 fi
-if [ ! -f "$WORKDIR/boot.log" ] && ! ps aux | grep [t]oken > /dev/null; then
+if [ ! -f "$WORKDIR/boot.log" ] && ! ps aux | grep '[t]unnel --no' > /dev/null; then
 yellow "当前Argo固定域名：$(cat $WORKDIR/gdym.log 2>/dev/null)，启用失败，请检查相关参数是否输入有误"
 fi
-if ! crontab -l 2>/dev/null | grep -q 'serv00keep'; then
-if [ -f "$WORKDIR/boot.log" ] || grep -q "trycloudflare.com" "$WORKDIR/boot.log" 2>/dev/null; then
-check_process="! ps aux | grep '[c]onfig' > /dev/null || ! ps aux | grep [l]ocalhost > /dev/null"
-else
-check_process="! ps aux | grep '[c]onfig' > /dev/null || ! ps aux | grep [t]oken > /dev/null"
-fi
-(crontab -l 2>/dev/null; echo "*/2 * * * * if $check_process; then /bin/bash serv00keep.sh; fi") | crontab -
-purple "发现Serv00开大招了，Cron保活被重置清空了"
-purple "目前Cron保活已修复成功。打开 http://${USERNAME}.${USERNAME}.serv00.net/up 也可实时保活"
-purple "主进程与Argo进程启动中…………1分钟后可再次进入脚本查看"
-else
-green "Cron保活运行正常。打开 http://${USERNAME}.${USERNAME}.serv00.net/up 也可实时保活"
-fi
+green "保活网页：http://${USERNAME}.${USERNAME}.serv00.net/up ，打开一次，即可默认每3分钟自动保活"
+#if ! crontab -l 2>/dev/null | grep -q 'serv00keep'; then
+#if [ -f "$WORKDIR/boot.log" ] || grep -q "trycloudflare.com" "$WORKDIR/boot.log" 2>/dev/null; then
+#check_process="! ps aux | grep '[c]onfig' > /dev/null || ! ps aux | grep [l]ocalhost > /dev/null"
+#else
+#check_process="! ps aux | grep '[c]onfig' > /dev/null || ! ps aux | grep [t]oken > /dev/null"
+#fi
+#(crontab -l 2>/dev/null; echo "*/2 * * * * if $check_process; then /bin/bash serv00keep.sh; fi") | crontab -
+#purple "发现Serv00开大招了，Cron保活被重置清空了"
+#purple "目前Cron保活已修复成功。打开 http://${USERNAME}.${USERNAME}.serv00.net/up 也可实时保活"
+#purple "主进程与Argo进程启动中…………1分钟后可再次进入脚本查看"
+#else
+#green "Cron保活运行正常。打开 http://${USERNAME}.${USERNAME}.serv00.net/up 也可实时保活"
+#fi
 else
 red "未安装sing-box，请选择 1 进行安装" 
 fi

@@ -44,7 +44,11 @@ WORKDIR="${HOME}/domains/${USERNAME}.serv00.net/logs"
 read_ip(){
 nb=$(echo "$HOSTNAME" | cut -d '.' -f 1 | tr -d 's')
 ym=("$HOSTNAME" "cache$nb.serv00.com" "web$nb.serv00.com")
-rm -rf ip.txt
+rm -rf ip.txt hy2ip.txt
+for ip in "${ym[@]}"; do
+dig @8.8.8.8 +time=2 +short $ip >> hy2ip.txt
+sleep 1  
+done
 for ym in "${ym[@]}"; do
 # 引用frankiejun API
 response=$(curl -s "https://ss.botai.us.kg/api/getip?host=$ym")
@@ -281,7 +285,9 @@ nb=$(hostname | cut -d '.' -f 1 | tr -d 's')
 if [ "$nb" == "14" ]; then
 ytb='"jnn-pa.googleapis.com",'
 fi
-
+hy1p=$(sed -n '1p' hy2ip.txt)
+hy2p=$(sed -n '2p' hy2ip.txt)
+hy3p=$(sed -n '3p' hy2ip.txt)
   cat > config.json << EOF
 {
   "log": {
@@ -293,7 +299,49 @@ fi
     {
        "tag": "hysteria-in",
        "type": "hysteria2",
-       "listen": "$IP",
+       "listen": "$hy1p",
+       "listen_port": $hy2_port,
+       "users": [
+         {
+             "password": "$UUID"
+         }
+     ],
+     "masquerade": "https://www.bing.com",
+     "ignore_client_bandwidth":false,
+     "tls": {
+         "enabled": true,
+         "alpn": [
+             "h3"
+         ],
+         "certificate_path": "cert.pem",
+         "key_path": "private.key"
+        }
+    },
+        {
+       "tag": "hysteria-in",
+       "type": "hysteria2",
+       "listen": "$hy2p",
+       "listen_port": $hy2_port,
+       "users": [
+         {
+             "password": "$UUID"
+         }
+     ],
+     "masquerade": "https://www.bing.com",
+     "ignore_client_bandwidth":false,
+     "tls": {
+         "enabled": true,
+         "alpn": [
+             "h3"
+         ],
+         "certificate_path": "cert.pem",
+         "key_path": "private.key"
+        }
+    },
+        {
+       "tag": "hysteria-in",
+       "type": "hysteria2",
+       "listen": "$hy3p",
        "listen_port": $hy2_port,
        "users": [
          {
@@ -458,11 +506,13 @@ fi
 else
    agg=$(cat ag.txt)
     if [[ $ARGO_AUTH =~ ^[A-Z0-9a-z=]{120,250}$ ]]; then
-      args="tunnel --edge-ip-version auto --no-autoupdate --protocol http2 run --token ${ARGO_AUTH}"
+      #args="tunnel --edge-ip-version auto --no-autoupdate --protocol http2 run --token ${ARGO_AUTH}"
+      args="tunnel --no-autoupdate run --token ${ARGO_AUTH}"
     elif [[ $ARGO_AUTH =~ TunnelSecret ]]; then
       args="tunnel --edge-ip-version auto --config tunnel.yml run"
     else
-     args="tunnel --edge-ip-version auto --no-autoupdate --protocol http2 --logfile boot.log --loglevel info --url http://localhost:$vmess_port"
+     #args="tunnel --edge-ip-version auto --no-autoupdate --protocol http2 --logfile boot.log --loglevel info --url http://localhost:$vmess_port"
+     args="tunnel --url http://localhost:$vmess_port --no-autoupdate --logfile boot.log --loglevel info"
     fi
     nohup ./"$agg" $args >/dev/null 2>&1 &
     sleep 10
@@ -477,11 +527,11 @@ else
 fi
 fi
 }
-if [ -z "$ARGO_DOMAIN" ] && ! ps aux | grep "[l]ocalhost:$vmess_port" > /dev/null; then
-ps aux | grep '[l]ocalhost' | awk '{print $2}' | xargs -r kill -9 > /dev/null 2>&1
+if [ -z "$ARGO_DOMAIN" ] && ! ps aux | grep '[t]unnel --url' > /dev/null; then
+ps aux | grep '[t]unnel --url' | awk '{print $2}' | xargs -r kill -9 > /dev/null 2>&1
 cfgo
-elif [ -n "$ARGO_DOMAIN" ] && ! ps aux | grep "[t]oken $ARGO_AUTH" > /dev/null; then
-ps aux | grep '[t]oken' | awk '{print $2}' | xargs -r kill -9 > /dev/null 2>&1
+elif [ -n "$ARGO_DOMAIN" ] && ! ps aux | grep '[t]unnel --no' > /dev/null; then
+ps aux | grep '[t]unnel --no' | awk '{print $2}' | xargs -r kill -9 > /dev/null 2>&1
 cfgo
 else
 green "Arog进程已启动"
