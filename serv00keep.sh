@@ -278,7 +278,7 @@ openssl ecparam -genkey -name prime256v1 -out "private.key"
 openssl req -new -x509 -days 3650 -key "private.key" -out "cert.pem" -subj "/CN=$USERNAME.serv00.net"
 
 nb=$(hostname | cut -d '.' -f 1 | tr -d 's')
-if [ "$nb" == "14" ] || [ "$nb" == "15" ]; then
+if [[ "$nb" =~ (14|15|16) ]]; then
 ytb='"jnn-pa.googleapis.com",'
 fi
 hy1p=$(sed -n '1p' hy2ip.txt)
@@ -420,19 +420,28 @@ hy3p=$(sed -n '3p' hy2ip.txt)
     {
       "type": "direct",
       "tag": "direct"
-    },
-    {
-      "type": "block",
-      "tag": "block"
     }
   ],
    "route": {
+       "rule_set": [
+      {
+        "tag": "geosite-google-gemini",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-google-gemini.srs",
+        "download_detour": "direct"
+      }
+    ],
     "rules": [
     {
      "domain": [
      $ytb
      "oh.my.god"
       ],
+     "outbound": "wg"
+    },
+    {
+     "rule_set":"geosite-google-gemini",
      "outbound": "wg"
     }
     ],
